@@ -91,3 +91,54 @@ h1 { text-align: center; margin-bottom: 28px; }
 .daily-icon { font-size: 20px; }
 .daily-temp { text-align: right; font-weight: 600; }
 .daily-precip { text-align: right; color: #5b8def; }
+
+/* ---------- 单位切换 / 定位按钮 / 收藏 ---------- */
+
+.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+.header-bar h1 { margin-bottom: 0; }
+
+#unitToggle {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #c5d5e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #607086;
+  cursor: pointer;
+}
+#unitToggle:hover { border-color: #5b8def; }
+
+#locateBtn {
+  padding: 12px 16px;
+  font-size: 16px;
+  border: 1px solid #c5d5e8;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+#locateBtn:disabled { opacity: 0.6; cursor: wait; }
+
+.favorites { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.fav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #fff;
+  border: 1px solid #d7e3f0;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.fav-chip:hover { border-color: #5b8def; }
+.fav-remove { color: #a0aec0; font-weight: bold; }
+.fav-remove:hover { color: #c0392b; }
+
+.fav-star {
+  margin-left: 6px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  color: #e6a817;
+  cursor: pointer;
+}
