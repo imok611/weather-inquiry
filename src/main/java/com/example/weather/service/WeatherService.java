@@ -1,5 +1,6 @@
 package com.example.weather.service;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -25,8 +26,10 @@ public class WeatherService {
      * 城市名 → 经纬度。查无此城市时抛 CityNotFoundException。
      */
     public GeoResult geocode(String city) {
+        // 必须用 uri(URI)：传 String 时 RestClient 会先解码再按 JVM 默认字符集（本机 GBK）
+        // 重新编码，导致中文城市名乱码查不到；URL 已由 buildGeocodingUrl 完成 UTF-8 编码，直接传 URI 原样发送
         GeocodingResponse response = restClient.get()
-                .uri(buildGeocodingUrl(city))
+                .uri(URI.create(buildGeocodingUrl(city)))
                 .retrieve()
                 .body(GeocodingResponse.class);
         return extractFirstResult(response, city);
