@@ -2,6 +2,8 @@ package com.example.weather.service;
 
 import java.util.List;
 
+import com.example.weather.dto.DailyForecast;
+import com.example.weather.dto.ForecastResponse;
 import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.GeocodingResponse;
 import com.example.weather.exception.CityNotFoundException;
@@ -49,5 +51,40 @@ class WeatherServiceTest {
         GeocodingResponse response = new GeocodingResponse(null);
         assertThrows(CityNotFoundException.class,
                 () -> WeatherService.extractFirstResult(response, "asdfg"));
+    }
+
+    @Test
+    void buildForecastUrlContainsCoordinatesAndFields() {
+        String url = WeatherService.buildForecastUrl(30.2937, 120.1614);
+        assertTrue(url.contains("latitude=30.2937"));
+        assertTrue(url.contains("longitude=120.1614"));
+        assertTrue(url.contains("current="));
+        assertTrue(url.contains("daily="));
+        assertTrue(url.contains("timezone=auto"));
+        assertTrue(url.contains("forecast_days=7"));
+    }
+
+    @Test
+    void extractDailyForecastsAlignsColumnArraysByIndex() {
+        ForecastResponse.Daily daily = new ForecastResponse.Daily(
+                List.of("2026-08-24", "2026-08-25", "2026-08-26"),
+                List.of(0, 1, 61),
+                List.of(31.0, 29.5, 27.0),
+                List.of(24.0, 23.1, 21.0),
+                List.of(10, 40, 90));
+
+        List<DailyForecast> forecasts = WeatherService.extractDailyForecasts(daily);
+
+        assertEquals(3, forecasts.size());
+        assertEquals("2026-08-25", forecasts.get(1).date());
+        assertEquals(1, forecasts.get(1).weatherCode());
+        assertEquals(29.5, forecasts.get(1).tempMax());
+        assertEquals(23.1, forecasts.get(1).tempMin());
+        assertEquals(40, forecasts.get(1).precipProb());
+    }
+
+    @Test
+    void extractDailyForecastsReturnsEmptyWhenDailyNull() {
+        assertTrue(WeatherService.extractDailyForecasts(null).isEmpty());
     }
 }
