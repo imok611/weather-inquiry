@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>天气查询</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <h1>🌤️ 天气查询</h1>
+    <div class="search-bar">
+      <input id="cityInput" type="text" placeholder="输入城市名，如 Beijing / 北京" autocomplete="off">
+      <button id="queryBtn" type="button">查询</button>
+    </div>
+    <p id="errorBox" class="error hidden"></p>
+    <section id="currentCard" class="current-card hidden"></section>
+    <section id="dailyList" class="daily-list hidden"></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
