@@ -1,5 +1,6 @@
 package com.example.weather.service;
 
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -9,14 +10,22 @@ import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.GeocodingResponse;
 import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
+import com.example.weather.exception.UpstreamApiException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class WeatherServiceTest {
 
@@ -177,5 +186,47 @@ class WeatherServiceTest {
     void getWeatherRejectsBlankCity() {
         WeatherService service = new WeatherService();
         assertThrows(IllegalArgumentException.class, () -> service.getWeather("   "));
+    }
+
+    @Test
+    void geocodeParsesUpstreamJsonViaMockServer() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        WeatherService service = new WeatherService(builder.build(), System::currentTimeMillis);
+
+        server.expect(requestTo(containsString("name=Hangzhou")))
+                .andRespond(withSuccess(
+                        "{\"results\":[{\"name\":\"Hangzhou\",\"country\":\"China\",\"latitude\":30.2937,\"longitude\":120.1614}]}",
+                        MediaType.APPLICATION_JSON));
+
+        GeoResult result = service.geocode("Hangzhou");
+
+        assertEquals("Hangzhou", result.name());
+        assertEquals(30.2937, result.latitude(), 0.0001);
+        server.verify();
+    }
+
+    @Test
+    void geocodeThrowsCityNotFoundOnEmptyResultsViaMockServer() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        WeatherService service = new WeatherService(builder.build(), System::currentTimeMillis);
+
+        server.expect(requestTo(containsString("name=asdfg")))
+                .andRespond(withSuccess("{\"results\":[]}", MediaType.APPLICATION_JSON));
+
+        assertThrows(CityNotFoundException.class, () -> service.geocode("asdfg"));
+    }
+
+    @Test
+    void geocodeWrapsNetworkFailureAsUpstreamApiException() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        WeatherService service = new WeatherService(builder.build(), System::currentTimeMillis);
+
+        server.expect(requestTo(containsString("name=Hangzhou")))
+                .andRespond(withException(new SocketTimeoutException("Read timed out")));
+
+        assertThrows(UpstreamApiException.class, () -> service.geocode("Hangzhou"));
     }
 }

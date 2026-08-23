@@ -3,6 +3,7 @@ package com.example.weather.service;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -18,6 +19,7 @@ import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
 import com.example.weather.exception.UpstreamApiException;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -46,13 +48,26 @@ public class WeatherService {
     private final LongSupplier clock;
 
     public WeatherService() {
-        this(System::currentTimeMillis);
+        this(createDefaultRestClient(), System::currentTimeMillis);
     }
 
     /** 包私有构造：供单测注入可控时钟 */
     WeatherService(LongSupplier clock) {
-        this.restClient = RestClient.create();
+        this(createDefaultRestClient(), clock);
+    }
+
+    /** 包私有构造：供单测注入 RestClient（配合 MockRestServiceServer） */
+    WeatherService(RestClient restClient, LongSupplier clock) {
+        this.restClient = restClient;
         this.clock = clock;
+    }
+
+    /** 连接/读取超时各 5 秒，防止上游卡住拖垮前端（简报步骤 5） */
+    private static RestClient createDefaultRestClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        return RestClient.builder().requestFactory(factory).build();
     }
 
     /**
