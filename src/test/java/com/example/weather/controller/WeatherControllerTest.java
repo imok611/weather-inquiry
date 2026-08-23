@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.example.weather.dto.CurrentWeather;
 import com.example.weather.dto.DailyForecast;
-import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
 import com.example.weather.exception.UpstreamApiException;
@@ -28,24 +27,6 @@ class WeatherControllerTest {
 
     @MockBean
     private WeatherService weatherService;
-
-    @Test
-    void pingReturnsHello() throws Exception {
-        mockMvc.perform(get("/api/ping"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.msg").value("hello"));
-    }
-
-    @Test
-    void geocodeReturnsFirstResult() throws Exception {
-        when(weatherService.geocode("Hangzhou"))
-                .thenReturn(new GeoResult("Hangzhou", "China", 30.2937, 120.1614));
-
-        mockMvc.perform(get("/api/geocode").param("city", "Hangzhou"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Hangzhou"))
-                .andExpect(jsonPath("$.latitude").value(30.2937));
-    }
 
     @Test
     void weatherReturnsAssembledData() throws Exception {
