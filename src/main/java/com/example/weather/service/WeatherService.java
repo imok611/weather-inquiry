@@ -6,10 +6,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.weather.dto.CurrentWeather;
 import com.example.weather.dto.DailyForecast;
 import com.example.weather.dto.ForecastResponse;
 import com.example.weather.dto.GeocodingResponse;
 import com.example.weather.dto.GeoResult;
+import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -54,6 +56,26 @@ public class WeatherService {
             throw new CityNotFoundException(city);
         }
         return response.results().get(0);
+    }
+
+    /**
+     * 主流程：城市名 → 经纬度 → 预报数据 → 组装前端响应。cached 固定 false（Day 4 加缓存）。
+     */
+    public WeatherResponse getWeather(String city) {
+        GeoResult geo = geocode(city);
+        ForecastResponse forecast = fetchForecast(geo.latitude(), geo.longitude());
+        ForecastResponse.Current current = forecast.current();
+        return new WeatherResponse(
+                geo.name(),
+                geo.country(),
+                new CurrentWeather(
+                        current.temperature2m(),
+                        current.apparentTemperature(),
+                        current.weatherCode(),
+                        current.windSpeed10m(),
+                        current.relativeHumidity2m()),
+                extractDailyForecasts(forecast.daily()),
+                false);
     }
 
     /**

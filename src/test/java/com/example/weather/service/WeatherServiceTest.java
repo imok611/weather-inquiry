@@ -6,12 +6,16 @@ import com.example.weather.dto.DailyForecast;
 import com.example.weather.dto.ForecastResponse;
 import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.GeocodingResponse;
+import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
 
 class WeatherServiceTest {
 
@@ -86,5 +90,30 @@ class WeatherServiceTest {
     @Test
     void extractDailyForecastsReturnsEmptyWhenDailyNull() {
         assertTrue(WeatherService.extractDailyForecasts(null).isEmpty());
+    }
+
+    @Test
+    void getWeatherAssemblesFullResponse() {
+        WeatherService spy = Mockito.spy(new WeatherService());
+        GeoResult geo = new GeoResult("杭州市", "中国", 30.2937, 120.1614);
+        ForecastResponse.Current current = new ForecastResponse.Current(26.1, 28.3, 61, 1, 7.4);
+        ForecastResponse.Daily daily = new ForecastResponse.Daily(
+                List.of("2026-08-24", "2026-08-25"),
+                List.of(1, 3), List.of(31.0, 29.5), List.of(24.0, 23.1), List.of(10, 40));
+        doReturn(geo).when(spy).geocode("杭州");
+        doReturn(new ForecastResponse(current, daily)).when(spy).fetchForecast(30.2937, 120.1614);
+
+        WeatherResponse response = spy.getWeather("杭州");
+
+        assertEquals("杭州市", response.city());
+        assertEquals("中国", response.country());
+        assertEquals(26.1, response.current().temperature());
+        assertEquals(28.3, response.current().feelsLike());
+        assertEquals(1, response.current().weatherCode());
+        assertEquals(7.4, response.current().windSpeed());
+        assertEquals(61, response.current().humidity());
+        assertEquals(2, response.daily().size());
+        assertEquals(40, response.daily().get(1).precipProb());
+        assertFalse(response.cached());
     }
 }
