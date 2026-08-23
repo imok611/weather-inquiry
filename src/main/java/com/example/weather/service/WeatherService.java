@@ -89,6 +89,10 @@ public class WeatherService {
      * 缓存套在组装好的最终响应上，惰性淘汰（读时检查过期），命中返回 cached=true。
      */
     public WeatherResponse getWeather(String city) {
+        // 校验在查缓存之前：空白输入永远不进缓存
+        if (city == null || city.isBlank()) {
+            throw new IllegalArgumentException("请输入城市名称");
+        }
         String key = normalize(city);
         CacheEntry entry = cache.get(key);
         if (entry != null && clock.getAsLong() - entry.createdAt() < TTL_MILLIS) {

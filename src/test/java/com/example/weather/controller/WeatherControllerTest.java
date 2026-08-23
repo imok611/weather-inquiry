@@ -81,4 +81,13 @@ class WeatherControllerTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error").value("上游天气服务暂不可用，请稍后重试"));
     }
+
+    @Test
+    void weatherReturns400WhenCityBlank() throws Exception {
+        when(weatherService.getWeather("")).thenThrow(new IllegalArgumentException("请输入城市名称"));
+
+        mockMvc.perform(get("/api/weather").param("city", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("请输入城市名称"));
+    }
 }

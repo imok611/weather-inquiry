@@ -172,4 +172,10 @@ class WeatherServiceTest {
         assertFalse(afterExpiry.cached());
         Mockito.verify(spy, Mockito.times(2)).fetchForecast(30.2937, 120.1614);
     }
+
+    @Test
+    void getWeatherRejectsBlankCity() {
+        WeatherService service = new WeatherService();
+        assertThrows(IllegalArgumentException.class, () -> service.getWeather("   "));
+    }
 }
