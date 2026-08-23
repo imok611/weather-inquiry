@@ -1,6 +1,12 @@
 package com.example.weather.controller;
 
+import java.util.List;
+
+import com.example.weather.dto.CurrentWeather;
+import com.example.weather.dto.DailyForecast;
 import com.example.weather.dto.GeoResult;
+import com.example.weather.dto.WeatherResponse;
+import com.example.weather.exception.CityNotFoundException;
 import com.example.weather.service.WeatherService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,14 +36,38 @@ class WeatherControllerTest {
     }
 
     @Test
-    void geocodeReturnsServiceResult() throws Exception {
-        when(weatherService.geocode("Beijing"))
-                .thenReturn(new GeoResult("北京", "中国", 39.9075, 116.39723));
+    void geocodeReturnsFirstResult() throws Exception {
+        when(weatherService.geocode("Hangzhou"))
+                .thenReturn(new GeoResult("Hangzhou", "China", 30.2937, 120.1614));
 
-        mockMvc.perform(get("/api/geocode").param("city", "Beijing"))
+        mockMvc.perform(get("/api/geocode").param("city", "Hangzhou"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("北京"))
-                .andExpect(jsonPath("$.latitude").value(39.9075))
-                .andExpect(jsonPath("$.longitude").value(116.39723));
+                .andExpect(jsonPath("$.name").value("Hangzhou"))
+                .andExpect(jsonPath("$.latitude").value(30.2937));
+    }
+
+    @Test
+    void weatherReturnsAssembledData() throws Exception {
+        WeatherResponse stub = new WeatherResponse("杭州市", "中国",
+                new CurrentWeather(26.1, 28.3, 1, 7.4, 61),
+                List.of(new DailyForecast("2026-08-24", 1, 31.0, 24.0, 10)),
+                false);
+        when(weatherService.getWeather("杭州")).thenReturn(stub);
+
+        mockMvc.perform(get("/api/weather").param("city", "杭州"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city").value("杭州市"))
+                .andExpect(jsonPath("$.current.temperature").value(26.1))
+                .andExpect(jsonPath("$.daily[0].date").value("2026-08-24"))
+                .andExpect(jsonPath("$.cached").value(false));
+    }
+
+    @Test
+    void weatherReturns404WhenCityNotFound() throws Exception {
+        when(weatherService.getWeather("火星")).thenThrow(new CityNotFoundException("火星"));
+
+        mockMvc.perform(get("/api/weather").param("city", "火星"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("未找到城市: 火星"));
     }
 }
