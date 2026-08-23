@@ -7,6 +7,7 @@ import com.example.weather.dto.DailyForecast;
 import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
+import com.example.weather.exception.UpstreamApiException;
 import com.example.weather.service.WeatherService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,5 +70,15 @@ class WeatherControllerTest {
         mockMvc.perform(get("/api/weather").param("city", "火星"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("未找到城市: 火星"));
+    }
+
+    @Test
+    void weatherReturns503WhenUpstreamFails() throws Exception {
+        when(weatherService.getWeather("Beijing"))
+                .thenThrow(new UpstreamApiException("调用 Geocoding API 失败: Beijing", new RuntimeException()));
+
+        mockMvc.perform(get("/api/weather").param("city", "Beijing"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("上游天气服务暂不可用，请稍后重试"));
     }
 }

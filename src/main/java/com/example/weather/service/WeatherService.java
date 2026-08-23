@@ -17,8 +17,10 @@ import com.example.weather.dto.GeocodingResponse;
 import com.example.weather.dto.GeoResult;
 import com.example.weather.dto.WeatherResponse;
 import com.example.weather.exception.CityNotFoundException;
+import com.example.weather.exception.UpstreamApiException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 @Service
 public class WeatherService {
@@ -59,10 +61,15 @@ public class WeatherService {
     public GeoResult geocode(String city) {
         // 必须用 uri(URI)：传 String 时 RestClient 会先解码再按 JVM 默认字符集（本机 GBK）
         // 重新编码，导致中文城市名乱码查不到；URL 已由 buildGeocodingUrl 完成 UTF-8 编码，直接传 URI 原样发送
-        GeocodingResponse response = restClient.get()
-                .uri(URI.create(buildGeocodingUrl(city)))
-                .retrieve()
-                .body(GeocodingResponse.class);
+        GeocodingResponse response;
+        try {
+            response = restClient.get()
+                    .uri(URI.create(buildGeocodingUrl(city)))
+                    .retrieve()
+                    .body(GeocodingResponse.class);
+        } catch (RestClientException e) {
+            throw new UpstreamApiException("调用 Geocoding API 失败: " + city, e);
+        }
         return extractFirstResult(response, city);
     }
 
@@ -124,10 +131,14 @@ public class WeatherService {
      * 经纬度 → 完整预报响应（current + 列式 daily）。
      */
     public ForecastResponse fetchForecast(double latitude, double longitude) {
-        return restClient.get()
-                .uri(URI.create(buildForecastUrl(latitude, longitude)))
-                .retrieve()
-                .body(ForecastResponse.class);
+        try {
+            return restClient.get()
+                    .uri(URI.create(buildForecastUrl(latitude, longitude)))
+                    .retrieve()
+                    .body(ForecastResponse.class);
+        } catch (RestClientException e) {
+            throw new UpstreamApiException("调用 Forecast API 失败: " + latitude + "," + longitude, e);
+        }
     }
 
     static String buildForecastUrl(double latitude, double longitude) {

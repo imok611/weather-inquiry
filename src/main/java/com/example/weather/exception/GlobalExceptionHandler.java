@@ -15,4 +15,10 @@ public class GlobalExceptionHandler {
     public Map<String, String> handleCityNotFound(CityNotFoundException e) {
         return Map.of("error", e.getMessage());
     }
+
+    @ExceptionHandler(UpstreamApiException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Map<String, String> handleUpstream(UpstreamApiException e) {
+        return Map.of("error", "上游天气服务暂不可用，请稍后重试");
+    }
 }
