@@ -1,6 +1,7 @@
 package com.example.weather.service;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.example.weather.dto.DailyForecast;
 import com.example.weather.dto.ForecastResponse;
@@ -115,5 +116,60 @@ class WeatherServiceTest {
         assertEquals(2, response.daily().size());
         assertEquals(40, response.daily().get(1).precipProb());
         assertFalse(response.cached());
+    }
+
+    @Test
+    void getWeatherSecondCallHitsCache() {
+        WeatherService spy = Mockito.spy(new WeatherService());
+        GeoResult geo = new GeoResult("杭州市", "中国", 30.2937, 120.1614);
+        ForecastResponse.Current current = new ForecastResponse.Current(26.1, 28.3, 61, 1, 7.4);
+        ForecastResponse.Daily daily = new ForecastResponse.Daily(
+                List.of("2026-08-24"), List.of(1), List.of(31.0), List.of(24.0), List.of(10));
+        doReturn(geo).when(spy).geocode("杭州");
+        doReturn(new ForecastResponse(current, daily)).when(spy).fetchForecast(30.2937, 120.1614);
+
+        WeatherResponse first = spy.getWeather("杭州");
+        WeatherResponse second = spy.getWeather("杭州");
+
+        assertFalse(first.cached());
+        assertTrue(second.cached());
+        Mockito.verify(spy, Mockito.times(1)).fetchForecast(30.2937, 120.1614);
+    }
+
+    @Test
+    void getWeatherNormalizesCacheKey() {
+        WeatherService spy = Mockito.spy(new WeatherService());
+        GeoResult geo = new GeoResult("Hangzhou", "China", 30.2937, 120.1614);
+        ForecastResponse.Current current = new ForecastResponse.Current(26.1, 28.3, 61, 1, 7.4);
+        ForecastResponse.Daily daily = new ForecastResponse.Daily(
+                List.of("2026-08-24"), List.of(1), List.of(31.0), List.of(24.0), List.of(10));
+        doReturn(geo).when(spy).geocode("Hangzhou");
+        doReturn(new ForecastResponse(current, daily)).when(spy).fetchForecast(30.2937, 120.1614);
+
+        spy.getWeather("Hangzhou");
+        WeatherResponse second = spy.getWeather("  HANGZHOU  ");
+
+        assertTrue(second.cached());
+        Mockito.verify(spy, Mockito.times(1)).geocode(Mockito.anyString());
+    }
+
+    @Test
+    void getWeatherExpiresCacheAfterTenMinutes() {
+        AtomicLong now = new AtomicLong(1_000_000L);
+        WeatherService spy = Mockito.spy(new WeatherService(now::get));
+        GeoResult geo = new GeoResult("杭州市", "中国", 30.2937, 120.1614);
+        ForecastResponse.Current current = new ForecastResponse.Current(26.1, 28.3, 61, 1, 7.4);
+        ForecastResponse.Daily daily = new ForecastResponse.Daily(
+                List.of("2026-08-24"), List.of(1), List.of(31.0), List.of(24.0), List.of(10));
+        doReturn(geo).when(spy).geocode("杭州");
+        doReturn(new ForecastResponse(current, daily)).when(spy).fetchForecast(30.2937, 120.1614);
+
+        WeatherResponse first = spy.getWeather("杭州");
+        now.addAndGet(11 * 60 * 1000L);
+        WeatherResponse afterExpiry = spy.getWeather("杭州");
+
+        assertFalse(first.cached());
+        assertFalse(afterExpiry.cached());
+        Mockito.verify(spy, Mockito.times(2)).fetchForecast(30.2937, 120.1614);
     }
 }

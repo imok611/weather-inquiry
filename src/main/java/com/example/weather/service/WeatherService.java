@@ -5,6 +5,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
 
 import com.example.weather.dto.CurrentWeather;
 import com.example.weather.dto.DailyForecast;
@@ -30,8 +34,23 @@ public class WeatherService {
 
     private final RestClient restClient;
 
+    private static final long TTL_MILLIS = 10 * 60 * 1000; // 10 分钟
+
+    /** 缓存条目：组装好的最终响应 + 写入时间（epoch millis） */
+    record CacheEntry(WeatherResponse data, long createdAt) {
+    }
+
+    private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
+    private final LongSupplier clock;
+
     public WeatherService() {
+        this(System::currentTimeMillis);
+    }
+
+    /** 包私有构造：供单测注入可控时钟 */
+    WeatherService(LongSupplier clock) {
         this.restClient = RestClient.create();
+        this.clock = clock;
     }
 
     /**
@@ -59,11 +78,34 @@ public class WeatherService {
     }
 
     /**
-     * 主流程：城市名 → 经纬度 → 预报数据 → 组装前端响应。cached 固定 false（Day 4 加缓存）。
+     * 主流程：城市名 → 查缓存 → geocode → forecast → 组装。
+     * 缓存套在组装好的最终响应上，惰性淘汰（读时检查过期），命中返回 cached=true。
      */
     public WeatherResponse getWeather(String city) {
+        String key = normalize(city);
+        CacheEntry entry = cache.get(key);
+        if (entry != null && clock.getAsLong() - entry.createdAt() < TTL_MILLIS) {
+            return withCachedFlag(entry.data());
+        }
         GeoResult geo = geocode(city);
         ForecastResponse forecast = fetchForecast(geo.latitude(), geo.longitude());
+        WeatherResponse fresh = assemble(geo, forecast);
+        cache.put(key, new CacheEntry(fresh, clock.getAsLong()));
+        return fresh;
+    }
+
+    /** 归一化缓存 key：trim + 小写，"Beijing" / "beijing" / " Beijing " 视为同一 key */
+    static String normalize(String city) {
+        return city.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** 缓存命中时返回带 cached=true 的副本，不污染缓存里的原始对象 */
+    static WeatherResponse withCachedFlag(WeatherResponse response) {
+        return new WeatherResponse(response.city(), response.country(),
+                response.current(), response.daily(), true);
+    }
+
+    private WeatherResponse assemble(GeoResult geo, ForecastResponse forecast) {
         ForecastResponse.Current current = forecast.current();
         return new WeatherResponse(
                 geo.name(),
