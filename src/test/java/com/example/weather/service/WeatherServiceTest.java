@@ -189,6 +189,23 @@ class WeatherServiceTest {
     }
 
     @Test
+    void getWeatherByLocationUsesSeparateCacheKey() {
+        WeatherService spy = Mockito.spy(new WeatherService());
+        ForecastResponse.Current current = new ForecastResponse.Current(25.0, 27.0, 60, 1, 5.0);
+        ForecastResponse.Daily daily = new ForecastResponse.Daily(
+                List.of("2026-08-24"), List.of(1), List.of(30.0), List.of(22.0), List.of(20));
+        doReturn(new ForecastResponse(current, daily)).when(spy).fetchForecast(30.2937, 120.1614);
+
+        WeatherResponse first = spy.getWeatherByLocation(30.2937, 120.1614);
+        WeatherResponse second = spy.getWeatherByLocation(30.2937, 120.1614);
+
+        assertEquals("当前位置", first.city());
+        assertFalse(first.cached());
+        assertTrue(second.cached());
+        Mockito.verify(spy, Mockito.times(1)).fetchForecast(30.2937, 120.1614);
+    }
+
+    @Test
     void geocodeParsesUpstreamJsonViaMockServer() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

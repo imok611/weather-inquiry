@@ -71,4 +71,15 @@ class WeatherControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("请输入城市名称"));
     }
+
+    @Test
+    void weatherLocationReturnsData() throws Exception {
+        WeatherResponse stub = new WeatherResponse("当前位置", "",
+                new CurrentWeather(25.0, 27.0, 1, 5.0, 60), List.of(), false);
+        when(weatherService.getWeatherByLocation(30.2937, 120.1614)).thenReturn(stub);
+
+        mockMvc.perform(get("/api/weather/location").param("lat", "30.2937").param("lon", "120.1614"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city").value("当前位置"));
+    }
 }

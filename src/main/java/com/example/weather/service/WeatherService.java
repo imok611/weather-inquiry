@@ -120,6 +120,22 @@ public class WeatherService {
         return fresh;
     }
 
+    /**
+     * 浏览器定位直查：跳过 geocode，直接按经纬度查预报。
+     * 缓存 key 用 loc: 前缀与城市名 key 隔离。
+     */
+    public WeatherResponse getWeatherByLocation(double latitude, double longitude) {
+        String key = "loc:" + latitude + "," + longitude;
+        CacheEntry entry = cache.get(key);
+        if (entry != null && clock.getAsLong() - entry.createdAt() < TTL_MILLIS) {
+            return withCachedFlag(entry.data());
+        }
+        ForecastResponse forecast = fetchForecast(latitude, longitude);
+        WeatherResponse fresh = assemble(new GeoResult("当前位置", "", latitude, longitude), forecast);
+        cache.put(key, new CacheEntry(fresh, clock.getAsLong()));
+        return fresh;
+    }
+
     /** 归一化缓存 key：trim + 小写，"Beijing" / "beijing" / " Beijing " 视为同一 key */
     static String normalize(String city) {
         return city.trim().toLowerCase(Locale.ROOT);

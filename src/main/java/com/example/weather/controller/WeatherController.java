@@ -22,4 +22,10 @@ public class WeatherController {
     public WeatherResponse getWeather(@RequestParam String city) {
         return weatherService.getWeather(city);
     }
+
+    /** 浏览器定位直查：经纬度 → 完整天气数据 */
+    @GetMapping("/weather/location")
+    public WeatherResponse getWeatherByLocation(@RequestParam double lat, @RequestParam double lon) {
+        return weatherService.getWeatherByLocation(lat, lon);
+    }
 }
